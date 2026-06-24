@@ -192,9 +192,27 @@ export function ProductEditor({ state, onClose, onSaved }: ProductEditorProps) {
       const item = meta.find((m) => m.key === f.key);
       return item ?? { id: 0, key: f.key, value: "" };
     });
-    // Extras: any meta keys not in our known ACF set (e.g. internal WC fields)
+    // Extras: meta keys not in known ACF set, excluding internal WordPress/plugin fields.
+    // These are technical fields from WooCommerce, theme, Facebook, etc. — not useful for editing.
+    const INTERNAL_PREFIXES = [
+      "_", // private WP meta
+      "disable_woothumbs",
+      "site-", // theme layout settings
+      "theme-", // theme meta
+      "ast-", // Astra theme
+      "fb_", // Facebook integration
+      "woo_", // WooCommerce internal
+      "wp_", // WordPress internal
+      "woocommerce_",
+      "total_sales",
+      "custom_field", // generic
+    ];
+    const isInternal = (key: string) =>
+      INTERNAL_PREFIXES.some(
+        (p) => key === p || key.startsWith(p)
+      ) && !knownKeys.has(key);
     const extra = meta.filter(
-      (m) => !knownKeys.has(m.key) && !String(m.key).startsWith("_")
+      (m) => !knownKeys.has(m.key) && !isInternal(String(m.key))
     );
     return { textMeta: text, extraMeta: extra };
   }, [meta]);

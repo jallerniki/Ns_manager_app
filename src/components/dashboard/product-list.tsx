@@ -129,9 +129,12 @@ export function ProductList({ onEdit, onCreate }: ProductListProps) {
   const productsQuery = useQuery({
     queryKey: ["products", debouncedSearch, category, status, orderby, order, page],
     queryFn: () => {
+      // When filtering by "onlyblack" ACF field, fetch more per page since
+      // WC list API doesn't support meta filtering — we filter client-side.
+      const isOnlyBlack = status === "onlyblack";
       const params: Record<string, unknown> = {
         page,
-        per_page: PER_PAGE,
+        per_page: isOnlyBlack ? 100 : PER_PAGE,
         orderby,
         order,
       };
@@ -149,6 +152,12 @@ export function ProductList({ onEdit, onCreate }: ProductListProps) {
     if (status === "instock") return prods.filter((p) => p.stock_status === "instock");
     if (status === "outofstock") return prods.filter((p) => p.stock_status === "outofstock");
     if (status === "sale") return prods.filter((p) => p.on_sale);
+    if (status === "onlyblack") {
+      return prods.filter((p) => {
+        const v = p.meta_data?.find((m) => m.key === "_onlyblack")?.value;
+        return v === true || v === "1" || v === 1 || v === "true";
+      });
+    }
     return prods;
   }, [productsQuery.data, status]);
 
@@ -259,6 +268,7 @@ export function ProductList({ onEdit, onCreate }: ProductListProps) {
               <SelectItem value="instock">В наличии</SelectItem>
               <SelectItem value="outofstock">Нет в наличии</SelectItem>
               <SelectItem value="sale">Со скидкой</SelectItem>
+              <SelectItem value="onlyblack">Только чёрное</SelectItem>
             </SelectContent>
           </Select>
 
@@ -355,7 +365,7 @@ function CategoryRow({
       onClick={onClick}
       className={cn(
         "w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-left text-xs transition-colors",
-        selected ? "bg-primary/10 text-primary-foreground" : "hover:bg-accent text-foreground"
+        selected ? "bg-foreground text-background" : "hover:bg-accent text-foreground"
       )}
       style={{ paddingLeft: `${8 + depth * 16}px` }}
     >
@@ -365,7 +375,7 @@ function CategoryRow({
       <span
         className={cn(
           "size-4 rounded border grid place-items-center shrink-0 transition-colors",
-          selected ? "bg-primary border-primary text-primary-foreground" : "border-border bg-background"
+          selected ? "bg-background border-background text-foreground" : "border-border bg-background"
         )}
       >
         {selected && <Check className="size-3" />}

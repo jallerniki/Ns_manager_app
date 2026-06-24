@@ -152,7 +152,7 @@ export function CategoriesPanel({ selected, onChange, markDirty }: CategoriesPan
                   className={cn(
                     "w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-left text-xs transition-colors",
                     checked
-                      ? "bg-primary/10 text-primary-foreground"
+                      ? "bg-foreground text-background"
                       : "hover:bg-accent text-foreground"
                   )}
                   style={{ paddingLeft: `${8 + depth * 16}px` }}
@@ -164,7 +164,7 @@ export function CategoriesPanel({ selected, onChange, markDirty }: CategoriesPan
                     className={cn(
                       "size-4 rounded border grid place-items-center shrink-0 transition-colors",
                       checked
-                        ? "bg-primary border-primary text-primary-foreground"
+                        ? "bg-background border-background text-foreground"
                         : "border-border bg-background"
                     )}
                   >

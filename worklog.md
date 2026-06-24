@@ -457,3 +457,34 @@ Stage Summary:
 - Pure CSS animation — GPU-accelerated, zero layout reflow, no performance impact.
 - Re-triggers correctly on rapid consecutive moves via requestAnimationFrame.
 - All previous performance optimizations (no framer-motion layout, no backdrop-filter, transition-colors) remain in place.
+
+---
+Task ID: extras-filter-cat-highlight-onlyblack
+Agent: main (Z.ai Code)
+Task: Three changes: (1) remove unknown internal meta fields from editor (disable_woothumbs, site-*, fb_*, etc.); (2) selected category should be dark/black not white; (3) add "Только чёрное" status filter for _onlyblack ACF field.
+
+Work Log:
+- src/components/dashboard/product-editor.tsx — extraMeta filtering:
+  * Added INTERNAL_PREFIXES list: "_", "disable_woothumbs", "site-", "theme-", "ast-", "fb_", "woo_", "wp_", "woocommerce_", "total_sales", "custom_field".
+  * isInternal() checks if key starts with any prefix AND is not in knownKeys (so ACF fields like _остаток, _onlyblack are protected).
+  * Result: disable_woothumbs, site-sidebar-layout, fb_product_group_id, ast-*, theme-* no longer appear in "Доп. поля" section.
+- src/components/dashboard/categories-panel.tsx + product-list.tsx — category highlight:
+  * Changed selected row from "bg-primary/10 text-primary-foreground" (light violet bg + white text = hard to see) to "bg-foreground text-background" (dark/black bg + white text = high contrast).
+  * Checkbox: changed from "bg-primary border-primary text-primary-foreground" to "bg-background border-background text-foreground" (white box with dark check on dark row).
+  * Applied to both the editor sidebar categories panel AND the main page category filter popover.
+- src/components/dashboard/product-list.tsx — "Только чёрное" filter:
+  * Added SelectItem value="onlyblack">Только чёрное</SelectItem> to status dropdown.
+  * productsQuery: when status==="onlyblack", fetch per_page=100 (WC list API doesn't support meta filtering, so we filter client-side and need more products per page).
+  * allProducts: when status==="onlyblack", filter prods where meta_data has _onlyblack === true/"1"/1/"true".
+
+Verification (Agent Browser):
+- "Только чёрное" filter: 12 products with 4 having _onlyblack=true → filter showed exactly 4. ✓
+- Internal fields: extraLabels=[], hasExtrasSection=false (disable_woothumbs, site-*, fb_*, ast-* all filtered out). ✓
+- ACF fields intact: Состав, Линия, Ширина, Купон, Страна производства, Остаток, Метраж, Дефект all present. ✓
+- Category highlight: "Все категории" selected row now has dark/black background. ✓
+- Lint clean. Dev server compiles without errors.
+
+Stage Summary:
+- Internal WP/plugin meta fields removed from editor (no more confusing disable_woothumbs, site-sidebar-layout, fb_* etc.).
+- Selected category now highlighted with dark background (was white, hard to see).
+- "Только чёрное" status filter added — shows only products with _onlyblack ACF flag set to true.
