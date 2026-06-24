@@ -8,7 +8,8 @@ import type {
   WpUser,
 } from "@/lib/wp-types";
 
-const BASE = "/api/wp";
+const WP_BASE =
+  process.env.NEXT_PUBLIC_WP_BASE || "https://nstkani.ru/wp-json";
 
 export class ApiError extends Error {
   status: number;
@@ -18,10 +19,18 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
+function extractError(text: string, status: number): string {
+  try {
+    const j = JSON.parse(text);
+    if (j?.message) return String(j.message).replace(/<[^>]+>/g, "").trim();
+    if (j?.error) return String(j.error).replace(/<[^>]+>/g, "").trim();
+  } catch {
+    /* ignore */
+  }
+  return `Ошибка ${status}`;
+}
+
+async function wpRaw(path: string, init: RequestInit = {}): Promise<Response> {
   const token = getAuthToken();
   const headers: Record<string, string> = {
     ...(init.headers as Record<string, string>),
@@ -30,34 +39,24 @@ async function request<T>(
   if (init.body && !(init.body instanceof FormData) && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(`${BASE}${path}`, { ...init, headers });
+  return fetch(`${WP_BASE}${path}`, { ...init, headers, cache: "no-store" });
+}
+
+async function wpJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await wpRaw(path, init);
   const text = await res.text();
-  let data: unknown = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
-  }
-  if (!res.ok) {
-    const msg =
-      (data && typeof data === "object" && "error" in data
-        ? String((data as { error: unknown }).error)
-        : `Ошибка ${res.status}`) || `Ошибка ${res.status}`;
-    throw new ApiError(msg, res.status);
-  }
-  return data as T;
+  if (!res.ok) throw new ApiError(extractError(text, res.status), res.status);
+  return (text ? JSON.parse(text) : null) as T;
 }
 
 export const api = {
   login: (username: string, password: string) =>
-    request<WpUser>("/login", {
+    wpJson<WpUser>("/jwt-auth/v1/token", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     }),
 
-  listProducts: (params: {
+  async listProducts(params: {
     page?: number;
     per_page?: number;
     search?: string;
@@ -66,54 +65,125 @@ export const api = {
     sku?: string;
     orderby?: string;
     order?: "asc" | "desc";
-  }) => {
-    const q = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== "")
-        q.set(k, String(v));
+  }): Promise<WpProductsResponse> {
+    const q = new URLSearchParams({
+      page: String(params.page ?? 1),
+      per_page: String(params.per_page ?? 20),
+      orderby: params.orderby ?? "date",
+      order: params.order ?? "desc",
+      context: "edit",
     });
-    return request<WpProductsResponse>(`/products?${q.toString()}`);
+    if (params.search) q.set("search", params.search);
+    if (params.category) q.set("category", params.category);
+    if (params.status) q.set("status", params.status);
+    if (params.sku) q.set("sku", params.sku);
+
+    const res = await wpRaw(`/wc/v3/products?${q.toString()}`);
+    const text = await res.text();
+    if (!res.ok) throw new ApiError(extractError(text, res.status), res.status);
+    const products: WpProduct[] = text ? JSON.parse(text) : [];
+    return {
+      products,
+      total: Number(res.headers.get("x-wp-total") || "0"),
+      totalPages: Number(res.headers.get("x-wp-totalpages") || "0"),
+    };
   },
 
-  getProduct: (id: number) => request<WpProduct>(`/products/${id}`),
+  getProduct: (id: number) =>
+    wpJson<WpProduct>(`/wc/v3/products/${id}?context=edit`),
 
   updateProduct: (id: number, data: Partial<WpProduct>) =>
-    request<WpProduct>(`/products/${id}`, {
+    wpJson<WpProduct>(`/wc/v3/products/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
   createProduct: (data: Partial<WpProduct>) =>
-    request<WpProduct>("/products", {
+    wpJson<WpProduct>("/wc/v3/products", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   deleteProduct: (id: number, force = true) =>
-    request<{ deleted: boolean }>(`/products/${id}?force=${force}`, {
+    wpJson<{ deleted: boolean }>(`/wc/v3/products/${id}?force=${force}`, {
       method: "DELETE",
     }),
 
-  listCategories: (params?: { per_page?: number; search?: string; hide_empty?: boolean }) => {
-    const q = new URLSearchParams();
-    if (params?.per_page) q.set("per_page", String(params.per_page));
-    if (params?.search) q.set("search", params.search);
-    if (params?.hide_empty) q.set("hide_empty", "true");
-    return request<{ categories: WpCategory[]; total: number }>(
-      `/categories?${q.toString()}`
-    );
+  async listCategories(params?: {
+    per_page?: number;
+    search?: string;
+    hide_empty?: boolean;
+  }): Promise<{ categories: WpCategory[]; total: number; totalPages: number }> {
+    const perPage = params?.per_page ?? 100;
+    const search = params?.search ?? "";
+    const hideEmpty = !!params?.hide_empty;
+
+    if (search || hideEmpty) {
+      const q = new URLSearchParams({
+        per_page: String(perPage),
+        page: "1",
+      });
+      if (search) q.set("search", search);
+      if (hideEmpty) q.set("hide_empty", "true");
+      const res = await wpRaw(`/wc/v3/products/categories?${q.toString()}`);
+      const text = await res.text();
+      if (!res.ok) throw new ApiError(extractError(text, res.status), res.status);
+      const categories: WpCategory[] = text ? JSON.parse(text) : [];
+      return {
+        categories,
+        total: categories.length,
+        totalPages: Number(res.headers.get("x-wp-totalpages") || "1"),
+      };
+    }
+
+    const all: WpCategory[] = [];
+    let p = 1;
+    let totalPages = 1;
+    do {
+      const q = new URLSearchParams({
+        per_page: "100",
+        page: String(p),
+        order: "asc",
+        orderby: "name",
+      });
+      const res = await wpRaw(`/wc/v3/products/categories?${q.toString()}`);
+      const text = await res.text();
+      if (!res.ok) throw new ApiError(extractError(text, res.status), res.status);
+      const cats: WpCategory[] = text ? JSON.parse(text) : [];
+      all.push(...cats);
+      totalPages = Number(res.headers.get("x-wp-totalpages") || "1");
+      p++;
+    } while (p <= totalPages && all.length < 1000);
+
+    return { categories: all, total: all.length, totalPages };
   },
 
-  uploadMedia: (file: File, productId?: number) => {
-    const form = new FormData();
-    form.append("file", file);
-    if (productId) form.append("product_id", String(productId));
-    return request<{ id: number; source_url: string; title: { rendered: string } }>(
-      "/media",
-      { method: "POST", body: form }
-    );
+  async uploadMedia(
+    file: File,
+    productId?: number
+  ): Promise<{ id: number; source_url: string; title: { rendered: string } }> {
+    const token = getAuthToken();
+    const filename = (file.name || "upload.jpg").replace(/[^\w.\-]+/g, "_");
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Type": file.type || "application/octet-stream",
+    };
+    if (productId) headers["X-WP-Parent"] = String(productId);
+
+    const res = await fetch(`${WP_BASE}/wp/v2/media`, {
+      method: "POST",
+      headers,
+      body: file,
+      cache: "no-store",
+    });
+    const text = await res.text();
+    if (!res.ok) throw new ApiError(extractError(text, res.status), res.status);
+    return text ? JSON.parse(text) : {};
   },
 
   deleteMedia: (id: number) =>
-    request<{ deleted: boolean }>(`/media/${id}`, { method: "DELETE" }),
+    wpJson<{ deleted: boolean }>(`/wp/v2/media/${id}?force=true`, {
+      method: "DELETE",
+    }),
 };
