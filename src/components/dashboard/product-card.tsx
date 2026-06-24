@@ -69,6 +69,37 @@ export function ProductCard({ product, onEdit }: ProductCardProps) {
 
   return (
     <div className="group relative bg-card border border-border/70 rounded-xl p-3 hover:border-border hover:shadow-sm transition-all duration-200">
+      {/* Always-visible delete — works on mobile (no hover needed) */}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <button
+            type="button"
+            disabled={deleting}
+            title="Удалить товар"
+            aria-label="Удалить товар"
+            className="absolute right-2 top-2 z-10 grid size-8 place-items-center rounded-full border border-border bg-background/85 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-ring"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить товар?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Товар «{product.name || `#${product.id}`}» будет удалён безвозвратно.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Удаление…" : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex gap-3">
         {/* Thumbnail — click opens full-size photo */}
         <button
@@ -154,36 +185,6 @@ export function ProductCard({ product, onEdit }: ProductCardProps) {
               >
                 <Pencil className="size-3.5" />
               </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
-                    title="Удалить"
-                    disabled={deleting}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Удалить товар?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Товар «{product.name || `#${product.id}`}» будет удалён безвозвратно.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Отмена</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {deleting ? "Удаление…" : "Удалить"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
           </div>
         </div>
