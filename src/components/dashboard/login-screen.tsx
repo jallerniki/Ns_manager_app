@@ -49,11 +49,14 @@ export function LoginScreen() {
         >
           {/* Logo / Brand */}
           <div className="flex flex-col items-center mb-8">
-            <div className="size-12 rounded-2xl bg-primary text-primary-foreground grid place-items-center font-semibold text-lg shadow-lg shadow-primary/25 mb-4">
-              Tk
+            <div
+              className="size-12 rounded-2xl bg-primary text-primary-foreground grid place-items-center font-semibold text-lg shadow-lg shadow-primary/25 mb-4"
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
+            >
+              NS
             </div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Tkani Manager
+              NS Manager
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5 text-center">
               Войдите, чтобы управлять товарами
@@ -138,7 +141,7 @@ export function LoginScreen() {
         </motion.div>
       </main>
       <footer className="border-t border-border/60 py-4 text-center text-xs text-muted-foreground">
-        Tkani Manager · Быстрое управление товарами
+        NS Manager · Быстрое управление товарами
       </footer>
     </div>
   );

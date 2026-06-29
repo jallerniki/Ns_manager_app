@@ -119,3 +119,19 @@ export const STOCK_STATUS_LABELS: Record<WpStockStatus, string> = {
   outofstock: "Нет в наличии",
   onbackorder: "Под заказ",
 };
+
+/**
+ * Read an ACF True/False field from a product's meta_data.
+ * WP/ACF may store the value as a real boolean, or as "1"/"0"/1/0/"true".
+ */
+export function metaBool(
+  meta_data: WpMetaItem[] | undefined,
+  key: string
+): boolean {
+  const item = meta_data?.find((m) => m.key === key);
+  if (!item) return false;
+  const v = item.value;
+  if (typeof v === "boolean") return v;
+  if (v === "1" || v === 1 || v === "true") return true;
+  return false;
+}

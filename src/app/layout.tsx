@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tkani — Менеджер товаров",
+  title: "NS Manager — Менеджер товаров",
   description: "Быстрый и минималистичный дашборд для управления товарами WooCommerce",
 };
 

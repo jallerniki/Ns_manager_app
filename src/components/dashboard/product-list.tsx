@@ -35,6 +35,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useVideoKeys } from "@/lib/videos";
 import { ProductCard } from "./product-card";
 import type { WpCategory, WpProduct } from "@/lib/wp-types";
 
@@ -96,6 +97,9 @@ export function ProductList({ onEdit, onCreate }: ProductListProps) {
     queryFn: () => api.listCategories({ per_page: 100 }),
     staleTime: 10 * 60_000,
   });
+
+  // Список видео в бакете (тянется редко, дедуплицируется react-query)
+  const { keys: videoKeys } = useVideoKeys();
 
   // Build hierarchical category tree
   const { flatList } = useMemo(() => {
@@ -325,7 +329,7 @@ export function ProductList({ onEdit, onCreate }: ProductListProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: Math.min(i * 0.012, 0.2) }}
               >
-                <ProductCard product={p} onEdit={onEdit} />
+                <ProductCard product={p} onEdit={onEdit} videoKeys={videoKeys} />
               </motion.div>
             ))}
           </div>

@@ -32,6 +32,7 @@ import {
 } from "@/lib/wp-types";
 import { ImageManager } from "./image-manager";
 import { CategoriesPanel } from "./categories-panel";
+import { VideoManager } from "./video-manager";
 import { Lightbox, useLightbox } from "./lightbox";
 import type { EditorState } from "./dashboard";
 
@@ -304,6 +305,22 @@ export function ProductEditor({ state, onClose, onSaved }: ProductEditorProps) {
               </div>
             </div>
 
+            {/* Закупочная цена (мета-поле "закупочная_цена_") */}
+            <div className="space-y-1.5">
+              <Label htmlFor="zakupochnaya_cena" className="text-xs font-medium">
+                Закупочная цена (€)
+              </Label>
+              <Input
+                id="zakupochnaya_cena"
+                type="text"
+                inputMode="decimal"
+                value={metaTextValue("закупочная_цена_")}
+                onChange={(e) => updateMeta("закупочная_цена_", e.target.value)}
+                placeholder="—"
+                className="h-10 tabular-nums"
+              />
+            </div>
+
             <Separator />
 
             {/* Meta data — ACF characteristics */}
@@ -432,6 +449,9 @@ export function ProductEditor({ state, onClose, onSaved }: ProductEditorProps) {
                   )
                 }
               />
+            </div>
+            <div className="rounded-xl border border-border/70 bg-card/50 p-3.5">
+              <VideoManager article={form.name || ""} />
             </div>
           </div>
         </div>

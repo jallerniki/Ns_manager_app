@@ -38,7 +38,7 @@ export function Header({ onRefresh, onCreate }: HeaderProps) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `tkani-categories-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `ns-categories-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`Экспортировано категорий: ${all.length}`);
@@ -55,12 +55,15 @@ export function Header({ onRefresh, onCreate }: HeaderProps) {
         <div className="h-14 flex items-center justify-between gap-3">
           {/* Brand */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="size-8 rounded-lg bg-primary text-primary-foreground grid place-items-center font-semibold text-sm shrink-0">
-              Tk
+            <div
+              className="size-8 rounded-lg bg-primary text-primary-foreground grid place-items-center font-semibold text-sm shrink-0"
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
+            >
+              NS
             </div>
             <div className="min-w-0">
               <h1 className="text-sm font-semibold tracking-tight text-foreground truncate leading-tight">
-                Tkani Manager
+                NS Manager
               </h1>
               <p className="text-[11px] text-muted-foreground leading-tight truncate hidden sm:block">
                 {user?.user_display_name ? `Вы вошли как ${user.user_display_name}` : "Управление товарами"}

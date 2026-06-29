@@ -18,7 +18,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => set({ user: null, isAuthenticated: false }),
     }),
     {
-      name: "tkani-auth",
+      name: "ns-auth",
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
     }
   )
@@ -27,7 +27,7 @@ export const useAuthStore = create<AuthState>()(
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem("tkani-auth");
+    const raw = localStorage.getItem("ns-auth");
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed?.state?.user?.token ?? null;

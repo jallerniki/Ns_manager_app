@@ -6,9 +6,10 @@ import {
   Pencil,
   Trash2,
   ImageIcon,
-  Tag,
   TrendingDown,
-  AlertCircle,
+  AlertTriangle,
+  Ruler,
+  Video,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,15 +27,20 @@ import {
 import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { STOCK_STATUS_LABELS, type WpProduct } from "@/lib/wp-types";
+import {
+  metaBool,
+  type WpProduct,
+} from "@/lib/wp-types";
+import { hasVideoForArticle } from "@/lib/videos";
 import { Lightbox, useLightbox } from "./lightbox";
 
 interface ProductCardProps {
   product: WpProduct;
   onEdit: (product: WpProduct) => void;
+  videoKeys?: string[];
 }
 
-export function ProductCard({ product, onEdit }: ProductCardProps) {
+export function ProductCard({ product, onEdit, videoKeys }: ProductCardProps) {
   const qc = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -44,6 +50,9 @@ export function ProductCard({ product, onEdit }: ProductCardProps) {
   const price = parseFloat(product.regular_price || product.price || "0");
   const salePrice = parseFloat(product.sale_price || "0");
   const hasSale = salePrice > 0 && salePrice < price;
+  const metraj = String(
+    product.meta_data?.find((m) => m.key === "метраж_")?.value ?? ""
+  ).trim();
 
   function openPhoto(e: React.MouseEvent) {
     e.stopPropagation();
@@ -143,7 +152,25 @@ export function ProductCard({ product, onEdit }: ProductCardProps) {
 
           {/* Categories + badges */}
           <div className="flex flex-wrap items-center gap-1 mt-1.5">
-            <StockBadge status={product.stock_status} onSale={product.on_sale} />
+            <FlagBadges product={product} />
+            {videoKeys && hasVideoForArticle(product.name, videoKeys) && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                <Video className="size-2.5" />
+                Видео
+              </span>
+            )}
+            {metraj && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                <Ruler className="size-2.5" />
+                {metraj}
+              </span>
+            )}
+            {product.on_sale && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <TrendingDown className="size-2.5" />
+                Скидка
+              </span>
+            )}
             {product.status !== "publish" && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 font-normal">
                 {product.status === "draft" ? "Черновик" : product.status}
@@ -201,41 +228,54 @@ export function ProductCard({ product, onEdit }: ProductCardProps) {
   );
 }
 
-function StockBadge({
-  status,
-  onSale,
-}: {
-  status: WpProduct["stock_status"];
-  onSale: boolean;
-}) {
-  if (status === "instock") {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-        <span className="size-1.5 rounded-full bg-emerald-500" />
-        В наличии
-      </span>
-    );
-  }
-  if (status === "outofstock") {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-red-500/10 text-red-600 dark:text-red-400">
-        <AlertCircle className="size-2.5" />
-        Нет в наличии
-      </span>
-    );
-  }
-  if (onSale) {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-        <TrendingDown className="size-2.5" />
-        Скидка
-      </span>
-    );
-  }
+/**
+ * Badges strictly tied to the ACF True/False toggles editable inside the product.
+ * Each active toggle renders its own badge; order reflects priority
+ * (sold → needs work → only black → in stock).
+ */
+function FlagBadges({ product }: { product: WpProduct }) {
+  const badges = [
+    {
+      active: metaBool(product.meta_data, "_продано"),
+      label: "Продано",
+      className: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300",
+      icon: <span className="size-1.5 rounded-full bg-zinc-500" />,
+    },
+    {
+      active: metaBool(product.meta_data, "недоделано_"),
+      label: "Требует доработки",
+      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      icon: <AlertTriangle className="size-2.5" />,
+    },
+    {
+      active: metaBool(product.meta_data, "_onlyblack"),
+      label: "Только чёрное",
+      className: "bg-zinc-900/10 text-zinc-800 dark:bg-zinc-100/10 dark:text-zinc-100",
+      icon: (
+        <span className="size-1.5 rounded-full bg-zinc-900 dark:bg-zinc-100" />
+      ),
+    },
+    {
+      active: metaBool(product.meta_data, "в_наличии_"),
+      label: "В наличии",
+      className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+      icon: <span className="size-1.5 rounded-full bg-emerald-500" />,
+    },
+  ];
+
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
-      <Tag className="size-2.5" />
-      {STOCK_STATUS_LABELS[status] || status}
-    </span>
+    <>
+      {badges
+        .filter((b) => b.active)
+        .map((b) => (
+          <span
+            key={b.label}
+            className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md ${b.className}`}
+          >
+            {b.icon}
+            {b.label}
+          </span>
+        ))}
+    </>
   );
 }
